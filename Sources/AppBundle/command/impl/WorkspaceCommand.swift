@@ -6,7 +6,7 @@ struct WorkspaceCommand: Command {
     let args: WorkspaceCmdArgs
     /*conforms*/ let shouldResetClosedWindowsCache = false
 
-    func run(_ env: CmdEnv, _ io: CmdIo) -> BinaryExitCode { // todo refactor
+    func run(_ env: CmdEnv, _ io: CmdIo) async -> BinaryExitCode { // todo refactor
         guard let target = args.resolveTargetOrReportError(env, io) else { return .fail }
         let focusedWs = target.workspace
         let workspaceName: String
@@ -34,7 +34,16 @@ struct WorkspaceCommand: Command {
                     .succ(io.err("Workspace '\(workspaceName)' is already focused. Tip: use --fail-if-noop to exit with non-zero code"))
             }
         } else {
-            return .from(bool: Workspace.get(byName: workspaceName).focusWorkspace())
+            let targetWs = Workspace.get(byName: workspaceName)
+            let result = targetWs.focusWorkspace()
+            if result && args.animate { // Fork addition
+                let incomingFromRight = switch args.target.val {
+                    case .relative(let nextPrev): nextPrev == .next
+                    case .direct: focusedWs < targetWs
+                }
+                await slideWorkspaces(from: focusedWs, to: targetWs, incomingFromRight: incomingFromRight)
+            }
+            return .from(bool: result)
         }
     }
 }

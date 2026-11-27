@@ -73,6 +73,7 @@ private func resizeWithMouse(_ window: Window) async throws { // todo cover with
                             return parent?.orientation == orientation && parent?.layout == .tiles
                         }
                         .forEach { $0.setWeight(orientation, $0.getWeightBeforeResize(orientation) + diff) }
+                    if parent.isScrollingStrip { continue } // Fork addition: scrolling columns don't squeeze each other
                     let inhabitedSiblings = (parent.children.slice(startIndex ..< untilIndex) ?? [])
                         .filter { $0.tilingTreeNodeCasesOrDie().isInhabited }
                     guard let siblingDiff = diff.div(inhabitedSiblings.count) else { return }

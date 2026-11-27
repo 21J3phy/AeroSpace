@@ -8,6 +8,7 @@ public struct WorkspaceCmdArgs: CmdArgs {
             "--auto-back-and-forth": ArgParser(\._autoBackAndForth, constSubArgParserFun(true)),
             "--wrap-around": ArgParser(\._wrapAround, constSubArgParserFun(true)),
             "--fail-if-noop": trueBoolFlag(\.failIfNoop),
+            "--animate": trueBoolFlag(\.animate), // Fork addition
 
             "--stdin": ArgParser(\.commonState.explicitStdinFlag, constSubArgParserFun(true)),
             "--no-stdin": ArgParser(\.commonState.explicitStdinFlag, constSubArgParserFun(false)),
@@ -24,6 +25,7 @@ public struct WorkspaceCmdArgs: CmdArgs {
     public var target: Lateinit<WorkspaceTarget> = .uninitialized
     public var _autoBackAndForth: Bool?
     public var failIfNoop: Bool = false
+    public var animate: Bool = false
     public var _wrapAround: Bool?
 }
 

@@ -61,6 +61,14 @@ struct Config: Withable {
     var modes: [String: Mode] = [:]
     var onWindowDetected: [WindowDetectedCallback] = []
     var onModeChanged: Shell<any Command> = .empty
+
+    // Fork additions
+    var defaultLayoutMode: WorkspaceLayoutMode = .tiling
+    var newWindowPlacement: NewWindowPlacement = .grid
+    var scrolling: ScrollingConfig = ScrollingConfig()
+    var gestures: [TrackpadGesture: Shell<any Command>] = [:]
+    /// Duration of `workspace --animate`. Zero disables the animation
+    var workspaceAnimationDurationMs: Int = 250
 }
 
 struct FocusFollowsMouse: Withable {

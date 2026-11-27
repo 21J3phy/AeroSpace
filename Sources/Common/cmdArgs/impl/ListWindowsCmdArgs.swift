@@ -190,6 +190,7 @@ public enum FormatVar: RawRepresentable, Equatable, CaseIterable, Sendable {
         case workspaceFocused = "workspace-is-focused"
         case workspaceVisible = "workspace-is-visible"
         case workspaceRootContainerLayout = "workspace-root-container-layout"
+        case workspaceLayoutMode = "workspace-layout-mode" // Fork addition
     }
 
     public enum AppFormatVar: String, Equatable, CaseIterable, Sendable {

@@ -40,6 +40,8 @@ extension CmdArgs {
                 command = JoinWithCommand(args: self as! JoinWithCmdArgs)
             case .layout:
                 command = LayoutCommand(args: self as! LayoutCmdArgs)
+            case .layoutMode:
+                command = LayoutModeCommand(args: self as! LayoutModeCmdArgs)
             case .listApps:
                 command = ListAppsCommand(args: self as! ListAppsCmdArgs)
             case .listExecEnvVars:

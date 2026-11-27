@@ -51,6 +51,12 @@ struct ResizeCommand: Command {
             case .subtract(let unit): -CGFloat(unit)
         }
 
+        // Fork addition: columns of the scrolling layout mode are independent. Resizing one doesn't squeeze the others
+        if parent.isScrollingStrip {
+            node.setWeight(orientation, clampScrollingColumnWidth(node.getWeight(orientation) + diff, parent))
+            return .succ
+        }
+
         let inhabitedSiblings = parent.inhabitedChildren.filter { $0 != node }
         guard let childDiff = diff.div(inhabitedSiblings.count) else { return .fail }
         for sibling in inhabitedSiblings {

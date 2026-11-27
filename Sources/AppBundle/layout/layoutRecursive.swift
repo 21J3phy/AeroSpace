@@ -9,7 +9,10 @@ extension Workspace {
         // If monitors are aligned vertically and the monitor below has smaller width, then macOS may not allow the
         // window on the upper monitor to take full width. rect.height - 1 resolves this problem
         // But I also faced this problem in monitors horizontal configuration. ¯\_(ツ)_/¯
-        try await layoutRecursive(rect.topLeftCorner, width: rect.width, height: rect.height - 1, virtual: rect, LayoutContext(self))
+        // Fork addition: while the workspace slides in, it's laid out next to its final place
+        let slideOffset = activeWorkspaceSlide.flatMap { $0.incomingWorkspace == self ? $0.incomingOffset : nil } ?? 0
+        let context = LayoutContext(self, slideOffset: slideOffset)
+        try await layoutRecursive(rect.topLeftCorner.addingXOffset(slideOffset), width: rect.width, height: rect.height - 1, virtual: rect, context)
     }
 }
 
@@ -25,7 +28,12 @@ extension TreeNode {
             case .workspace(let workspace):
                 lastAppliedLayoutPhysicalRect = physicalRect
                 lastAppliedLayoutVirtualRect = virtual
-                try await workspace.rootTilingContainer.layoutRecursive(point, width: width, height: height, virtual: virtual, context)
+                switch workspace.layoutMode {
+                    case .scrolling: // Fork addition
+                        try await workspace.rootTilingContainer.layoutScrolling(point, width: width, height: height, virtual: virtual, context)
+                    case .tiling, .floating:
+                        try await workspace.rootTilingContainer.layoutRecursive(point, width: width, height: height, virtual: virtual, context)
+                }
                 try await workspace.floatingWindowsContainer.layoutRecursive(point, width: width, height: height, virtual: virtual, context)
             case .floatingWindowsContainer(let container):
                 let windows = container.children.filterIsInstance(of: Window.self)
@@ -65,13 +73,44 @@ extension TreeNode {
     }
 }
 
+extension TreeNode {
+    /// Fork addition. See ``TilingContainer/layoutScrolling(_:width:height:virtual:_:)``
+    @MainActor
+    fileprivate func parkOutsideOfVisibleAreaRecursive(_ context: LayoutContext, windowWidth: CGFloat) {
+        lastAppliedLayoutPhysicalRect = nil
+        lastAppliedLayoutVirtualRect = nil
+        if let window = self as? Window {
+            if window.windowId == currentlyManipulatedWithMouseWindowId { return }
+            let monitorRect = context.workspace.workspaceMonitorInfo.visibleRect
+            // The same trick that is used for windows of inactive workspaces: keep one pixel of the window on the screen
+            let parkingPoint = switch context.hideCorner {
+                case .bottomLeftCorner: monitorRect.bottomLeftCorner + Point(x: 1 - windowWidth, y: -1)
+                case .bottomRightCorner: monitorRect.bottomRightCorner - Point(x: 1, y: 1)
+            }
+            window.setAxFrame(parkingPoint, nil)
+        } else {
+            for child in children {
+                child.parkOutsideOfVisibleAreaRecursive(context, windowWidth: windowWidth)
+            }
+        }
+    }
+}
+
 private struct LayoutContext {
     let workspace: Workspace
     let resolvedGaps: ResolvedGaps
+    /// Fork addition
+    @MainActor var hideCorner: OptimalHideCorner {
+        optimalHideCorner(for: workspace.workspaceMonitorInfo, among: globalUnsortedMonitorInfos)
+    }
+
+    /// Fork addition. See ``WorkspaceSlide``
+    let slideOffset: CGFloat
 
     @MainActor
-    init(_ workspace: Workspace) {
+    init(_ workspace: Workspace, slideOffset: CGFloat) {
         self.workspace = workspace
+        self.slideOffset = slideOffset
         self.resolvedGaps = ResolvedGaps(gaps: config.gaps, monitor: workspace.workspaceMonitorInfo)
     }
 }
@@ -108,7 +147,7 @@ extension Window {
         let monitorRect = noOuterGapsInFullscreen
             ? context.workspace.workspaceMonitorInfo.visibleRect
             : context.workspace.workspaceMonitorInfo.visibleRectPaddedByOuterGaps
-        setAxFrame(monitorRect.topLeftCorner, CGSize(width: monitorRect.width, height: monitorRect.height))
+        setAxFrame(monitorRect.topLeftCorner.addingXOffset(context.slideOffset), CGSize(width: monitorRect.width, height: monitorRect.height))
     }
 }
 
@@ -147,6 +186,74 @@ extension TilingContainer {
             )
             virtualPoint = orientation == .h ? virtualPoint.addingXOffset(child.hWeight) : virtualPoint.addingYOffset(child.vWeight)
             point = orientation == .h ? point.addingXOffset(child.hWeight) : point.addingYOffset(child.vWeight)
+        }
+    }
+
+    /// Fork addition. Scrolling layout mode (niri/PaperWM-like).
+    ///
+    /// Children of the root container are columns of a horizontal strip. Weight of a column is its width in points.
+    /// The strip can be wider than the monitor. It's scrolled just enough to keep the most recent column fully visible.
+    /// Columns that don't fit are parked outside of the visible area the same way windows of inactive workspaces are
+    @MainActor
+    fileprivate func layoutScrolling(_ point: Point, width: CGFloat, height: CGFloat, virtual: Rect, _ context: LayoutContext) async throws {
+        lastAppliedLayoutPhysicalRect = Rect(topLeftX: point.x, topLeftY: point.y, width: width, height: height)
+        lastAppliedLayoutVirtualRect = virtual
+        if layout != .tiles { layout = .tiles }
+        changeOrientation(.h)
+
+        let columns = inhabitedChildren
+        if columns.isEmpty { return }
+        var widths: [CGFloat] = []
+        for column in columns {
+            let columnWidth = column.getWeight(.h).coerce(in: minScrollingColumnWidth ... max(minScrollingColumnWidth, width))
+            column.setWeight(.h, columnWidth)
+            widths.append(columnWidth)
+        }
+        // Don't waste the monitor space when the strip is narrower than the monitor
+        let stripWidth = widths.reduce(0, +)
+        if stripWidth < width {
+            widths = widths.map { $0 * width / stripWidth }
+        }
+        var offsets: [CGFloat] = [] // Left edge of every column relative to the left edge of the strip
+        var nextOffset: CGFloat = 0
+        for columnWidth in widths {
+            offsets.append(nextOffset)
+            nextOffset += columnWidth
+        }
+
+        let focusedIndex = mostRecentInhabitedChild.flatMap { columns.firstIndex(of: $0) } ?? 0
+        var scrollOffset = context.workspace.scrollOffset
+        if offsets[focusedIndex] < scrollOffset {
+            scrollOffset = offsets[focusedIndex]
+        }
+        if offsets[focusedIndex] + widths[focusedIndex] > scrollOffset + width {
+            scrollOffset = offsets[focusedIndex] + widths[focusedIndex] - width
+        }
+        scrollOffset = scrollOffset.coerce(in: 0 ... max(0, max(stripWidth, width) - width))
+        context.workspace.scrollOffset = scrollOffset
+
+        // A partially visible column sticks out of the monitor. That's fine unless there is another monitor to show it
+        let canShowPartiallyVisibleColumns = globalUnsortedMonitorInfos.count == 1
+        let rawGap = context.resolvedGaps.inner.horizontal.toDouble()
+        let lastIndex = columns.indices.last
+        for (i, column) in columns.enumerated() {
+            let left = offsets[i] - scrollOffset
+            let right = left + widths[i]
+            let isFullyVisible = left >= -1 && right <= width + 1
+            let isPartiallyVisible = right > 1 && left < width - 1
+            if isFullyVisible || (isPartiallyVisible && canShowPartiallyVisibleColumns) {
+                let leftGap = i == 0 ? 0 : rawGap / 2
+                let rightGap = i == lastIndex ? 0 : rawGap / 2
+                try await column.layoutRecursive(
+                    Point(x: point.x + left + leftGap, y: point.y),
+                    width: widths[i] - leftGap - rightGap,
+                    height: height,
+                    virtual: Rect(topLeftX: virtual.topLeftX + left, topLeftY: virtual.topLeftY, width: widths[i], height: height),
+                    context,
+                )
+            } else {
+                column.parkOutsideOfVisibleAreaRecursive(context, windowWidth: widths[i])
+            }
         }
     }
 

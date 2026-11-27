@@ -6,10 +6,15 @@ import Common
 final class Workspace: TreeNode, NonLeafTreeNodeObject, Hashable, Comparable {
     let name: String
     nonisolated private let nameLogicalSegments: StringLogicalSegments
+    /// Fork addition. Use ``setLayoutMode(_:)`` to change it. The setter doesn't rearrange windows
+    var layoutMode: WorkspaceLayoutMode
+    /// Fork addition. Scrolling layout mode: distance between the left edge of the columns strip and the left edge of the monitor
+    var scrollOffset: CGFloat = 0
 
     @MainActor private init(_ name: String) {
         self.name = name
         self.nameLogicalSegments = name.toLogicalSegments()
+        self.layoutMode = workspaceLayoutModeOverrides[name] ?? effectiveDefaultLayoutMode
         let container = mainMonitorInfo.toMonitorOrRearrangeMonitors().getWorkspacesContainerOrCreate()
         super.init(parent: container, adaptiveWeight: 0, index: 0)
         check(forceAssignedMonitorInfo?.toMonitorOrRearrangeMonitors().getWorkspacesContainerOrCreate().bindWorkspace(self) != false)

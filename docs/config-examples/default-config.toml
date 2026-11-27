@@ -34,6 +34,26 @@ default-root-container-layout = 'tiles'
 #               tall monitor (anything higher than wide) gets vertical orientation
 default-root-container-orientation = 'auto'
 
+# Fork addition. How workspaces arrange their windows by default
+# Possible values: tiling|scrolling|floating
+# - tiling:    i3-like tiling tree
+# - scrolling: every window is a column in a horizontal strip that scrolls to the focused column
+# - floating:  windows are not arranged at all
+# Use 'layout-mode' command (or the menu bar) to switch the mode of a workspace at runtime
+default-layout-mode = 'tiling'
+
+# Fork addition. Where new windows go in the tiling layout mode
+# Possible values: grid|after-focused
+# - grid:          keep the workspace looking like a grid (2 windows: side by side, 4 windows: 2x2, 9 windows: 3x3, ...)
+# - after-focused: put the new window next to the focused one (the behavior of the upstream AeroSpace)
+new-window-placement = 'grid'
+
+# Fork addition. Default width of a column in the scrolling layout mode. In percents of the monitor width
+scrolling.column-width-percent = 50
+
+# Fork addition. Duration of the slide animation of 'workspace --animate' command. Zero disables the animation
+workspace-animation-duration-ms = 250
+
 # Mouse follows focus when focused monitor changes
 # Drop it from your config, if you don't like this behavior
 # See https://nikitabobko.github.io/AeroSpace/guide#on-focus-changed-callbacks
@@ -80,6 +100,16 @@ gaps.outer.bottom =     0
 gaps.outer.top =        0
 gaps.outer.right =      0
 
+# Fork addition. Trackpad swipes
+# Keys:   (three|four|five)-finger-swipe-(left|right|up|down). The direction is the direction your fingers move
+# Values: commands, the same as in key bindings. Empty string unbinds the gesture
+# The two bindings below are active even if your config doesn't have [gestures] section at all.
+# Make sure that macOS itself doesn't use the same swipes:
+#   System Settings -> Trackpad -> More Gestures -> Swipe between full-screen applications
+[gestures]
+    three-finger-swipe-left = 'workspace --animate next'
+    three-finger-swipe-right = 'workspace --animate prev'
+
 # 'main' binding mode declaration
 # See: https://nikitabobko.github.io/AeroSpace/guide#binding-modes
 # 'main' binding mode must be always presented
@@ -112,6 +142,9 @@ gaps.outer.right =      0
     # See: https://nikitabobko.github.io/AeroSpace/commands#layout
     alt-slash = 'layout tiles horizontal vertical'
     alt-comma = 'layout accordion horizontal vertical'
+
+    # Fork addition. See: https://nikitabobko.github.io/AeroSpace/commands#layout-mode
+    alt-shift-space = 'layout-mode tiling scrolling floating'
 
     # See: https://nikitabobko.github.io/AeroSpace/commands#focus
     alt-h = 'focus left'

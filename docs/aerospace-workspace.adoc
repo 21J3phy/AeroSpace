@@ -9,8 +9,8 @@ include::util/man-attributes.adoc[]
 == Synopsis
 [verse]
 // tag::synopsis[]
-aerospace workspace [-h|--help] [--auto-back-and-forth] [--fail-if-noop] [--] <workspace-name>
-aerospace workspace [-h|--help] [--wrap-around] [--stdin|--no-stdin] (next|prev)
+aerospace workspace [-h|--help] [--auto-back-and-forth] [--fail-if-noop] [--animate] [--] <workspace-name>
+aerospace workspace [-h|--help] [--wrap-around] [--stdin|--no-stdin] [--animate] (next|prev)
 
 // end::synopsis[]
 
@@ -34,6 +34,12 @@ include::util/conditional-options-header.adoc[]
 
 -h, --help:: Print help
 --wrap-around:: Make it possible to jump between first and last workspaces using `(next|prev)`
+
+--animate::
+Slide windows of the old workspace out and windows of the new workspace in, the way macOS Spaces do.
+`next` and workspaces that are later in the list arrive from the right, the others arrive from the left.
+The duration is configured with `workspace-animation-duration-ms` config option.
+The animation is skipped when several monitors are connected
 
 --auto-back-and-forth::
 Automatic `back-and-forth` when switching to already focused workspace.

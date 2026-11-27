@@ -9,6 +9,9 @@ func scheduleCancellableCompleteRefreshSession(
     _ event: RefreshSessionEvent,
     optimisticallyPreLayoutWorkspaces: Bool = false,
 ) {
+    // Fork addition: every frame of the workspace slide animation moves windows, and every move sends an AX notification.
+    // Refreshing on each of them would starve the animation. The session that runs the animation refreshes at the end
+    if case .ax = event, activeWorkspaceSlide != nil { return }
     activeRefreshTask?.cancel()
     let prev = activeRefreshTask
     activeRefreshTask = Task.startUnstructured { @MainActor in
@@ -163,41 +166,48 @@ private func layoutWorkspaces() async throws {
     let monitors = globalUnsortedMonitorInfos
     var monitorToOptimalHideCorner: [Point: OptimalHideCorner] = [:]
     for monitor in monitors {
-        let xOff = monitor.width * 0.1
-        let yOff = monitor.height * 0.1
-        // brc = bottomRightCorner
-        let brc1 = monitor.rect.bottomRightCorner + Point(x: 2, y: -yOff)
-        let brc2 = monitor.rect.bottomRightCorner + Point(x: -xOff, y: 2)
-        let brc3 = monitor.rect.bottomRightCorner + Point(x: 2, y: 2)
-
-        // blc = bottomLeftCorner
-        let blc1 = monitor.rect.bottomLeftCorner + Point(x: -2, y: -yOff)
-        let blc2 = monitor.rect.bottomLeftCorner + Point(x: xOff, y: 2)
-        let blc3 = monitor.rect.bottomLeftCorner + Point(x: -2, y: 2)
-
-        func contains(_ monitor: MonitorInfo, _ point: Point) -> Int { monitor.rect.contains(point) ? 1 : 0 }
-        let important = 10
-
-        let corner: OptimalHideCorner =
-            monitors.sumOfInt { contains($0, blc1) + contains($0, blc2) + important * contains($0, blc3) } <
-            monitors.sumOfInt { contains($0, brc1) + contains($0, brc2) + important * contains($0, brc3) }
-            ? .bottomLeftCorner
-            : .bottomRightCorner
-        monitorToOptimalHideCorner[monitor.rect.topLeftCorner] = corner
+        monitorToOptimalHideCorner[monitor.rect.topLeftCorner] = optimalHideCorner(for: monitor, among: monitors)
     }
 
     // to reduce flicker, first unhide visible workspaces, then hide invisible ones
+    let slide = activeWorkspaceSlide // Fork addition
     for monitor in monitors {
         let workspace = monitor.visibleWorkspace
-        workspace.allLeafWindowsRecursive.forEach { ($0 as! MacWindow).unhideFromCorner() } // todo as!
+        if slide?.incomingWorkspace != workspace { // The animation moves floating windows of the incoming workspace itself
+            workspace.allLeafWindowsRecursive.forEach { ($0 as! MacWindow).unhideFromCorner() } // todo as!
+        }
         try await workspace.layoutWorkspace()
     }
-    for workspace in Workspace.all where !workspace.isVisible {
+    for workspace in Workspace.all where !workspace.isVisible && slide?.outgoingWorkspace != workspace {
         let corner = monitorToOptimalHideCorner[workspace.workspaceMonitorInfo.rect.topLeftCorner] ?? .bottomRightCorner
         for window in workspace.allLeafWindowsRecursive {
             try await (window as! MacWindow).hideInCorner(corner) // todo as!
         }
     }
+}
+
+/// The corner of the monitor where hidden windows are the least likely to show up on a neighbour monitor
+@MainActor
+func optimalHideCorner(for monitor: MonitorInfo, among monitors: [MonitorInfo]) -> OptimalHideCorner {
+    let xOff = monitor.width * 0.1
+    let yOff = monitor.height * 0.1
+    // brc = bottomRightCorner
+    let brc1 = monitor.rect.bottomRightCorner + Point(x: 2, y: -yOff)
+    let brc2 = monitor.rect.bottomRightCorner + Point(x: -xOff, y: 2)
+    let brc3 = monitor.rect.bottomRightCorner + Point(x: 2, y: 2)
+
+    // blc = bottomLeftCorner
+    let blc1 = monitor.rect.bottomLeftCorner + Point(x: -2, y: -yOff)
+    let blc2 = monitor.rect.bottomLeftCorner + Point(x: xOff, y: 2)
+    let blc3 = monitor.rect.bottomLeftCorner + Point(x: -2, y: 2)
+
+    func contains(_ monitor: MonitorInfo, _ point: Point) -> Int { monitor.rect.contains(point) ? 1 : 0 }
+    let important = 10
+
+    return monitors.sumOfInt { contains($0, blc1) + contains($0, blc2) + important * contains($0, blc3) } <
+        monitors.sumOfInt { contains($0, brc1) + contains($0, brc2) + important * contains($0, brc3) }
+        ? .bottomLeftCorner
+        : .bottomRightCorner
 }
 
 @MainActor

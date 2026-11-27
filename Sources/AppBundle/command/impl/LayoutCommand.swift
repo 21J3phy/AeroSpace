@@ -85,6 +85,7 @@ struct LayoutCommand: Command {
                 guard let window = target.windowOrNil else { return .fail(io.err(noWindowIsFocused)) }
                 let workspace = target.workspace
                 window.bindAsFloatingWindow(to: workspace)
+                window.floatedByLayoutMode = false // The user explicitly asked for floating. Keep it floating in all layout modes
                 if let size = window.lastFloatingSize { window.setAxFrame(nil, size) }
                 return .succ
         }
