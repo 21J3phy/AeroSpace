@@ -15,6 +15,10 @@ public final class TrayMenuModel: ObservableObject {
     @Published var sponsorshipMessage: String = sponsorshipPrompts.randomElement().orDie()
     @Published var lastReloadConfigContainedWarnings: Bool = false
     @Published var axPermissionStatus: AxPermissionStatus = .waitingWithPrompt
+    /// Fork addition
+    @Published var focusedWorkspaceName: String = ""
+    /// Fork addition
+    @Published var focusedWorkspaceLayoutMode: WorkspaceLayoutMode = .tiling
 }
 
 enum AxPermissionStatus: Equatable {
@@ -26,6 +30,8 @@ enum AxPermissionStatus: Equatable {
 @MainActor func updateTrayText() {
     let sortedMonitors = globalSortedMonitorInfos
     let focus = globalFocus
+    TrayMenuModel.shared.focusedWorkspaceName = focus.workspace.name
+    TrayMenuModel.shared.focusedWorkspaceLayoutMode = focus.workspace.layoutMode
     TrayMenuModel.shared.trayText = (activeMode?.takeIf { $0 != mainModeId }?.first.map { "(\($0.uppercased())) " } ?? "") +
         sortedMonitors
         .lazy

@@ -40,6 +40,23 @@ public func menuBar(viewModel: TrayMenuModel) -> some Scene { // todo should it 
                     }
                 }
                 Divider()
+                // Fork addition
+                Text("Layout mode of workspace \(viewModel.focusedWorkspaceName):")
+                ForEach(WorkspaceLayoutMode.allCases, id: \.rawValue) { mode in
+                    Button {
+                        Task.startUnstructured {
+                            try await runLightSession(.menuBarButton, token) {
+                                _ = await LayoutModeCommand(args: LayoutModeCmdArgs(rawArgs: [], cycleBetween: [mode]))
+                                    .run(.defaultEnv, .emptyStdin)
+                            }
+                        }
+                    } label: {
+                        Toggle(isOn: .constant(viewModel.focusedWorkspaceLayoutMode == mode)) {
+                            Text(mode.rawValue.capitalized)
+                        }
+                    }
+                }
+                Divider()
             }
             Button {
                 NSWorkspace.shared.open(URL(string: "https://github.com/sponsors/nikitabobko").orDie())

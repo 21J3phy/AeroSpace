@@ -125,6 +125,13 @@ include::aerospace-layout.adoc[tags=synopsis]
 include::aerospace-layout.adoc[tags=purpose]
 include::aerospace-layout.adoc[tags=body]
 
+== layout-mode
+----
+include::aerospace-layout-mode.adoc[tags=synopsis]
+----
+include::aerospace-layout-mode.adoc[tags=purpose]
+include::aerospace-layout-mode.adoc[tags=body]
+
 == list-apps
 ----
 include::aerospace-list-apps.adoc[tags=synopsis]

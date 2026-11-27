@@ -121,6 +121,7 @@ private let keyMappingConfigRootKey = "key-mapping"
 private let configVersionConfigRootKey = "config-version"
 private let modeConfigRootKey = "mode"
 private let persistentWorkspacesKey = "persistent-workspaces"
+private let gesturesConfigRootKey = "gestures"
 
 // For every new config option you add, think:
 // 1. Does it make sense to have different value
@@ -157,6 +158,13 @@ private let configParser: [String: any ParserProtocol<Config>] = [
     "focus-follows-mouse": Parser(\.focusFollowsMouse, parseFocusFollowsMouse),
     "workspace-to-monitor-force-assignment": Parser(\.workspaceToMonitorForceAssignment, parseWorkspaceToMonitorAssignment),
     "on-window-detected": Parser(\.onWindowDetected, parseOnWindowDetectedArray),
+
+    // Fork additions
+    "default-layout-mode": Parser(\.defaultLayoutMode, parseWorkspaceLayoutMode),
+    "new-window-placement": Parser(\.newWindowPlacement, parseNewWindowPlacement),
+    "scrolling": Parser(\.scrolling, parseScrollingConfig),
+    "workspace-animation-duration-ms": Parser(\.workspaceAnimationDurationMs, parseWorkspaceAnimationDurationMs),
+    gesturesConfigRootKey: Parser(\.gestures, skipParsing(Config().gestures)), // Parsed manually
 
     // Deprecated
     "non-empty-workspaces-root-containers-layout-on-startup": Parser(\._nonEmptyWorkspacesRootContainersLayoutOnStartup, parseStartupRootContainerLayout),
@@ -273,6 +281,8 @@ struct ParseConfigResult {
     if let modes = rawTable[modeConfigRootKey].flatMap({ parseModes($0, .rootKey(modeConfigRootKey), &c, config.keyMapping.resolve()) }) {
         config.modes = modes
     }
+
+    config.gestures = parseGestures(rawTable[gesturesConfigRootKey], .rootKey(gesturesConfigRootKey), &c)
 
     if config.configVersion <= ._1 {
         if rawTable.keys.contains(persistentWorkspacesKey) {

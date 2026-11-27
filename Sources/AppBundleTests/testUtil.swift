@@ -50,15 +50,20 @@ func setUpWorkspacesForTests() {
     config.enableNormalizationFlattenContainers = false // Make layout tests more predictable
     config.enableNormalizationOppositeOrientationForNestedContainers = false // Make layout tests more predictable
     config.defaultRootContainerOrientation = .horizontal // Make default layout predictable
+    config.newWindowPlacement = .afterFocused // Fork: upstream tests assume the upstream placement of new windows
 
     // Don't create any bindings and workspaces for tests
     config.modes = [mainModeId: Mode(bindings: [:])]
     config.persistentWorkspaces = []
 
+    workspaceLayoutModeOverrides = [:]
+    runtimeDefaultLayoutMode = nil
     for workspace in Workspace.all {
         for child in workspace.children {
             child.unbindFromParent()
         }
+        workspace.layoutMode = .tiling
+        workspace.scrollOffset = 0
     }
     check(Workspace.get(byName: "setUpWorkspacesForTests").focusWorkspace())
     Workspace.garbageCollectUnusedWorkspaces()

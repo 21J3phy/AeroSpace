@@ -9,6 +9,9 @@ open class Window: TreeNode, Hashable {
     var noOuterGapsInFullscreen: Bool = false
     var layoutReason: LayoutReason = .standard
     var lifeStatus: WindowLifeStatus = .alive
+    /// Fork addition. The window floats only because its workspace is in the floating layout mode.
+    /// Such windows are tiled again when the workspace leaves the floating layout mode
+    var floatedByLayoutMode: Bool = false
 
     @MainActor
     init(id: OpaqueWindowId, _ app: any AbstractApp, lastFloatingSize: CGSize?, parent: NonLeafTreeNodeObject, adaptiveWeight: CGFloat, index: Int) {

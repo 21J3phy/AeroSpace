@@ -163,6 +163,8 @@ struct BindingData {
     let parent: NonLeafTreeNodeObject
     let adaptiveWeight: CGFloat
     let index: Int
+    /// Fork addition. See ``Window/floatedByLayoutMode``
+    var floatedByLayoutMode: Bool = false
 }
 
 final class NilTreeNode: TreeNode, NonLeafTreeNodeObject {

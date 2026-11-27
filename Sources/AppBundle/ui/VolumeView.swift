@@ -34,7 +34,11 @@ public final class VolumePanel: NSPanelHud {
 }
 
 struct VolumeView: View {
-    @State var volume: Float? = nil
+    // Fork note: in the macOS 27 SDK `@State` is a macro whose compiler plugin only ships with full Xcode.
+    // Spelling the storage out keeps the fork buildable with just the Command Line Tools
+    private let volumeState: State<Float?>
+    var volume: Float? { volumeState.wrappedValue }
+    init(volume: Float? = nil) { volumeState = State(initialValue: volume) }
 
     @Environment(\.colorScheme) var colorScheme: ColorScheme
     private var barColor: Color {

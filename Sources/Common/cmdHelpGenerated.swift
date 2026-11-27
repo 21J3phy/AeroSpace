@@ -66,6 +66,10 @@ let fullscreen_help_generated = """
 let join_with_help_generated = """
     USAGE: join-with [-h|--help] [--window-id <window-id>] (left|down|up|right)
     """
+let layout_mode_help_generated = """
+    USAGE: layout-mode [-h|--help] [--workspace <workspace>|--all] [--fail-if-noop]
+                       (tiling|scrolling|floating)...
+    """
 let layout_help_generated = """
     USAGE: layout [-h|--help] [--window-id <window-id>|--workspace <workspace>]
                   [--root] [--fail-if-noop]
@@ -180,6 +184,6 @@ let workspace_back_and_forth_help_generated = """
     USAGE: workspace-back-and-forth [-h|--help]
     """
 let workspace_help_generated = """
-    USAGE: workspace [-h|--help] [--auto-back-and-forth] [--fail-if-noop] [--] <workspace-name>
-       OR: workspace [-h|--help] [--wrap-around] [--stdin|--no-stdin] (next|prev)
+    USAGE: workspace [-h|--help] [--auto-back-and-forth] [--fail-if-noop] [--animate] [--] <workspace-name>
+       OR: workspace [-h|--help] [--wrap-around] [--stdin|--no-stdin] [--animate] (next|prev)
     """

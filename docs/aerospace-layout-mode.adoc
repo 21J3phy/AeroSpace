@@ -1,0 +1,53 @@
+= aerospace-layout-mode(1)
+include::util/man-attributes.adoc[]
+:manname: aerospace-layout-mode
+// tag::purpose[]
+:manpurpose: Switch how a whole workspace arranges its windows: tiling, scrolling or floating
+// end::purpose[]
+
+// =========================================================== Synopsis
+== Synopsis
+[verse]
+// tag::synopsis[]
+aerospace layout-mode [-h|--help] [--workspace <workspace>|--all] [--fail-if-noop]
+                      (tiling|scrolling|floating)...
+
+// end::synopsis[]
+
+// =========================================================== Description
+== Description
+
+// tag::body[]
+{manpurpose}
+
+* `tiling`. The i3-like tiling tree. New windows are placed in a grid (see `new-window-placement` config option)
+* `scrolling`. Every window is a column in a horizontal strip.
+  The strip scrolls to keep the focused column in view (niri/PaperWM-like)
+* `floating`. AeroSpace doesn't arrange windows of the workspace. All windows float at their own size
+
+`layout-mode tiling` on a workspace that is already tiling rearranges its windows into a clean grid again.
+It's useful after you closed some windows and the remaining ones are spread unevenly.
+
+If several modes are supplied then the command cycles through them:
+it switches to the mode that follows the current one in the list.
+
+The default mode for all workspaces is configured with `default-layout-mode` config option.
+
+// =========================================================== Options
+include::./util/conditional-options-header.adoc[]
+
+-h, --help:: Print help
+
+--workspace <workspace>::
+include::./util/workspace-flag-desc.adoc[]
+
+--all::
+Change the mode of every workspace, and make it the mode of workspaces created later (until AeroSpace is restarted)
+
+--fail-if-noop::
+Exit with non-zero exit code if the workspace is already in the requested mode
+
+// end::body[]
+
+// =========================================================== Footer
+include::util/man-footer.adoc[]

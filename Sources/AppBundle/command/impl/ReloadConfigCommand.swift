@@ -57,6 +57,9 @@ struct ReloadConfigResult {
         syncStartAtLogin()
         syncFocusFollowsMouse(config)
         syncConfigFileWatcher()
+        // Fork additions
+        syncTrackpadGestures()
+        await syncLayoutModesWithConfig()
     }
 
     if warningsAsErrors {

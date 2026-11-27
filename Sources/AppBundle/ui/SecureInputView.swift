@@ -43,7 +43,12 @@ public final class SecureInputPanel: NSPanelHud {
 }
 
 struct SecureInputView: View {
-    @State var isMinimized: Bool = true
+    // Fork note: see VolumeView. `@State` is spelled out to avoid the Xcode-only SwiftUI macro plugin
+    private let isMinimizedState: State<Bool> = State(initialValue: true)
+    var isMinimized: Bool {
+        get { isMinimizedState.wrappedValue }
+        nonmutating set { isMinimizedState.wrappedValue = newValue }
+    }
 
     @Environment(\.colorScheme) var colorScheme: ColorScheme
     private var fontColor: Color {

@@ -38,6 +38,7 @@ final class MacWindow: Window {
         // atomic synchronous section
         if let existing = allWindowsMap[windowId] { return existing }
         let window = MacWindow(windowId, macApp, lastFloatingSize: rect?.size, parent: data.parent, adaptiveWeight: data.adaptiveWeight, index: data.index)
+        window.floatedByLayoutMode = data.floatedByLayoutMode
         allWindowsMap[windowId] = window
 
         try await debugWindowsIfRecording(window, .cancellable)
@@ -170,6 +171,43 @@ final class MacWindow: Window {
         setAxFrame(p, nil)
     }
 
+    /// Fork addition. Mark the window as hidden, as if it was hidden from `rect`.
+    /// A later ``hideInCorner(_:)`` call then moves the window without overriding the remembered position
+    @MainActor
+    func rememberPositionBeforeHiding(_ rect: Rect) {
+        if isHiddenInCorner { return }
+        let monitorRect = rect.center.monitorApproximation.rect
+        let absolutePoint = rect.topLeftCorner - monitorRect.topLeftCorner
+        prevUnhiddenProportionalPositionInsideWorkspaceRect =
+            Point(x: absolutePoint.x / monitorRect.width, y: absolutePoint.y / monitorRect.height)
+        if isFloating {
+            lastFloatingSize = rect.size
+        }
+    }
+
+    /// Fork addition. Where ``unhideFromCorner()`` would put a floating window.
+    /// The window is no longer considered hidden after the call. The caller is responsible for moving it
+    @MainActor
+    func takeUnhiddenFloatingPosition() -> Point? {
+        guard isFloating, let position = unhiddenFloatingPosition() else { return nil }
+        prevUnhiddenProportionalPositionInsideWorkspaceRect = nil
+        return position
+    }
+
+    @MainActor
+    private func unhiddenFloatingPosition() -> Point? {
+        guard let prevUnhiddenProportionalPositionInsideWorkspaceRect else { return nil }
+        guard let nodeWorkspace else { return nil }
+        let workspaceRect = nodeWorkspace.workspaceMonitorInfo.rect
+        var newX = workspaceRect.topLeftX + workspaceRect.width * prevUnhiddenProportionalPositionInsideWorkspaceRect.x
+        var newY = workspaceRect.topLeftY + workspaceRect.height * prevUnhiddenProportionalPositionInsideWorkspaceRect.y
+        let windowWidth = lastFloatingSize?.width ?? 0
+        let windowHeight = lastFloatingSize?.height ?? 0
+        newX = newX.coerce(in: workspaceRect.minX ... max(workspaceRect.minX, workspaceRect.maxX - windowWidth))
+        newY = newY.coerce(in: workspaceRect.minY ... max(workspaceRect.minY, workspaceRect.maxY - windowHeight))
+        return Point(x: newX, y: newY)
+    }
+
     @MainActor
     func unhideFromCorner() {
         guard let prevUnhiddenProportionalPositionInsideWorkspaceRect else { return }
@@ -222,6 +260,7 @@ extension Window {
             ? unbindAndGetBindingDataForNewTilingWindow(workspace, window: self)
             : try await unbindAndGetBindingDataForNewWindow(self.asMacWindow().windowId, self.asMacWindow().macApp, workspace, window: self, cm)
         bind(to: data.parent, adaptiveWeight: data.adaptiveWeight, index: data.index)
+        floatedByLayoutMode = data.floatedByLayoutMode
     }
 }
 
@@ -240,6 +279,8 @@ private func unbindAndGetBindingDataForNewWindow(_ windowId: OpaqueWindowId, _ m
 @MainActor
 private func unbindAndGetBindingDataForNewTilingWindow(_ workspace: Workspace, window: Window?) -> BindingData {
     window?.unbindFromParent() // It's important to unbind to get correct data from below
+    // Fork addition: placement depends on the layout mode of the workspace
+    if let data = workspace.bindingDataForNewTilingWindowByLayoutMode() { return data }
     if let (tilingParent, index) = workspace.mostRecentWindowRecursive?.nearestAliveTilingParent() {
         return BindingData(parent: tilingParent, adaptiveWeight: WEIGHT_AUTO, index: index + 1)
     } else {

@@ -20,6 +20,7 @@ public enum CmdKind: String, CaseIterable, Equatable, Sendable {
     case fullscreen
     case joinWith = "join-with"
     case layout
+    case layoutMode = "layout-mode"
     case listApps = "list-apps"
     case listExecEnvVars = "list-exec-env-vars"
     case listModes = "list-modes"
@@ -90,6 +91,8 @@ func initSubcommands() -> [String: any SubCommandParserProtocol] {
                 result[kind.rawValue] = SubCommandParser(JoinWithCmdArgs.init)
             case .layout:
                 result[kind.rawValue] = SubCommandParser(parseLayoutCmdArgs)
+            case .layoutMode:
+                result[kind.rawValue] = SubCommandParser(parseLayoutModeCmdArgs)
             case .listApps:
                 result[kind.rawValue] = SubCommandParser(parseListAppsCmdArgs)
             case .listExecEnvVars:

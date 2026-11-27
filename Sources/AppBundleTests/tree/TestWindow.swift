@@ -43,6 +43,19 @@ final class TestWindow: Window, CustomStringConvertible {
     }
 
     override func isMacosFullscreen(_ cm: CancellationMode) async throws -> Bool { isMacosFullscreenForTest }
+
+    /// Fork addition: remember the frame so that layout passes can be asserted in tests
+    override func setAxFrame(_ topLeft: Point?, _ size: CGSize?) {
+        let old = _rect ?? Rect(topLeftX: 0, topLeftY: 0, width: 0, height: 0)
+        _rect = Rect(
+            topLeftX: topLeft?.x ?? old.topLeftX,
+            topLeftY: topLeft?.y ?? old.topLeftY,
+            width: size?.width ?? old.width,
+            height: size?.height ?? old.height,
+        )
+    }
+
+    var rectForTest: Rect? { _rect }
 }
 
 extension OpaqueWindowId: ExpressibleByIntegerLiteral {
